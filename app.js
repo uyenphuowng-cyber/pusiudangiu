@@ -2170,7 +2170,7 @@ function openStickerStudio(){
   openModal({title:"Cắt ghép sticker",body:`<div class="studio-ed">
    <div class="ed-stage" id="edSt"><canvas id="edC" width="${S}" height="${S}" aria-label="Khung cắt ghép"></canvas><div class="ed-hint" id="edHint">Thêm ảnh (chọn tệp, dán Ctrl+V, thả vào đây) hoặc sticker có sẵn để bắt đầu ghép.</div></div>
    <div class="ed-side">
-    <div class="panel-box"><h4>${ic("plus")} Thêm lớp</h4><div style="display:flex;gap:6px;flex-wrap:wrap"><label class="btn">${ic("image")} Ảnh từ máy<input type="file" id="edFile" accept="image/*" multiple hidden></label><button class="btn" id="edPx">${ic("star")} Sticker có sẵn</button><button class="btn" id="edTxt">Aa Chữ</button></div><div class="stk-tray" id="edTray" hidden>${STK_KEYS.map(k=>`<button data-ek="${k}"><img src="${stkURL(k).url}" alt="${k}"></button>`).join("")}${D.custom.map(c=>`<button data-ec="${esc(c.id)}"><img src="${esc(c.url)}" alt="" style="image-rendering:auto"></button>`).join("")}</div></div>
+    <div class="panel-box"><h4>${ic("plus")} Thêm lớp</h4><div style="display:flex;gap:6px;flex-wrap:wrap"><label class="btn">${ic("image")} Ảnh / GIF từ máy<input type="file" id="edFile" accept="image/*,.gif" multiple hidden></label><button class="btn" id="edPx">${ic("star")} Sticker có sẵn</button><button class="btn" id="edTxt">Aa Chữ</button></div><div class="stk-tray" id="edTray" hidden>${STK_KEYS.map(k=>`<button data-ek="${k}"><img src="${stkURL(k).url}" alt="${k}"></button>`).join("")}${D.custom.map(c=>`<button data-ec="${esc(c.id)}"><img src="${esc(c.url)}" alt="" style="image-rendering:auto"></button>`).join("")}</div></div>
     <div class="panel-box"><h4>${ic("cut")} Công cụ cho lớp đang chọn</h4>
       <div class="model-pick" id="edTools">${[["move","Di chuyển"],["wand","Xóa nền (bấm vào nền)"],["lasso","Cắt tự do (vẽ vòng)"]].map(([k,l])=>`<button class="chip" data-tool="${k}" aria-pressed="${k==="move"}">${l}</button>`).join("")}</div>
       <div class="field"><label for="edMask">Cắt theo hình</label><select id="edMask">${Object.entries(MASKS).map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}</select></div>
@@ -2180,18 +2180,19 @@ function openStickerStudio(){
     <div class="panel-box"><h4>${ic("spark")} Hiệu ứng sticker</h4>
       <div class="row3"><div class="field"><label for="edOl">Viền</label><input type="range" id="edOl" min="0" max="16" value="${outline}"></div><div class="field"><label for="edOc">Màu viền</label><input type="color" id="edOc" value="${ocol}" style="width:100%;height:36px;padding:2px"></div></div>
       <div class="row3"><div class="field"><label for="edPix">Pixel hóa</label><input type="range" id="edPix" min="1" max="10" value="1"></div><label class="chk-row"><input type="checkbox" class="chk" id="edSh" checked> Bóng đổ nhẹ</label></div>
-      <div class="prev"><canvas id="edPrev"></canvas></div></div>
+      <div class="field"><label for="edMv">Chuyển động khi dán</label><select id="edMv">${Object.entries(typeof STK_MV!=="undefined"?STK_MV:{bob:"Nhún nhẹ"}).map(([k,l])=>`<option value="${k}" ${k==="bob"?"selected":""}>${l}</option>`).join("")}</select></div>
+      <div class="prev"><span class="prev-stk" id="edPrevW" data-mv="bob"><canvas id="edPrev"></canvas></span></div><p class="muted" style="font-size:12px;margin:0">Thêm ảnh <b>GIF</b> để làm sticker động — xóa nền, cắt, viền áp dụng cho mọi khung hình.</p></div>
    </div></div>`,foot:`<button class="pill-btn" id="edClear" style="color:var(--bad)">${ic("trash")} Làm lại</button><div class="grow"></div><button class="pill-btn" id="edDl">${ic("dl")} Tải PNG</button><button class="pill-btn primary" id="edSave">${ic("check")} Lưu & dán lên màn hình</button>`});
   UI.vmode=_vm;
   const cv=$("#edC"),g=cv.getContext("2d");
   const obs=new MutationObserver(()=>{if(!document.body.contains(cv)){UI.studioOpen=false;UI.studioAdd=null;obs.disconnect()}});obs.observe(document.body,{childList:true,subtree:true});
-  const addLayer=(src,name)=>{const c=document.createElement("canvas");c.width=src.width||src.naturalWidth;c.height=src.height||src.naturalHeight;const cg=c.getContext("2d");cg.imageSmoothingEnabled=!(src.dataset&&src.dataset.px);cg.drawImage(src,0,0,c.width,c.height);
-    const k=Math.min(1,(S*.6)/Math.max(c.width,c.height));layers.push({c,name,x:S/2+(layers.length%3)*30-30,y:S/2+(layers.length%3)*24-24,s:k,r:0,mask:"none",pts:null,px:!!(src.dataset&&src.dataset.px)});sel=layers.length-1;sync();draw()};
-  UI.studioAdd=async files=>{for(const f of files.filter(f=>/^image\//.test(f.type)).slice(0,6)){try{addLayer(await loadImg(await fileToURL(f)),f.name)}catch(e){toast("Không đọc được ảnh")}}};
+  const addLayer=(src,name,frames)=>{const c=document.createElement("canvas");c.width=src.width||src.naturalWidth;c.height=src.height||src.naturalHeight;const cg=c.getContext("2d");cg.imageSmoothingEnabled=!(src.dataset&&src.dataset.px);cg.drawImage(src,0,0,c.width,c.height);
+    const k=Math.min(1,(S*.6)/Math.max(c.width,c.height));layers.push({c:frames?frames[0].c:c,frames:frames||null,name:(frames?"🎞 ":"")+name,x:S/2+(layers.length%3)*30-30,y:S/2+(layers.length%3)*24-24,s:k,r:0,mask:"none",pts:null,px:!!(src.dataset&&src.dataset.px)});sel=layers.length-1;sync();draw();if(frames){animTick();const dl=$("#edDl");if(dl)dl.innerHTML=`${ic("dl")} Tải GIF`}};
+  UI.studioAdd=async files=>{for(const f of files.filter(f=>/^image\//.test(f.type)).slice(0,6)){try{const fr=/gif|webp|png/.test(f.type)?await gifFrames(f):null;if(f.type==="image/gif"&&!fr&&!("ImageDecoder" in window))toast("Trình duyệt này chưa tách được khung GIF — dùng Chrome/Edge để giữ chuyển động",4500);addLayer(await loadImg(await fileToURL(f)),f.name,fr)}catch(e){toast("Không đọc được ảnh")}}};
   $("#edFile").onchange=e=>UI.studioAdd([...e.target.files]);
   $("#edPx").onclick=()=>{$("#edTray").hidden=!$("#edTray").hidden};
   $$("[data-ek]").forEach(b=>b.onclick=async()=>{const i=await loadImg(stkURL(b.dataset.ek,8).url);i.dataset.px="1";addLayer(i,b.dataset.ek)});
-  $$("[data-ec]").forEach(b=>b.onclick=async()=>{const c=D.custom.find(z=>z.id===b.dataset.ec);if(!c)return;try{const i=new Image();i.crossOrigin="anonymous";i.src=c.url;await i.decode();addLayer(i,c.name)}catch(e){toast("Không mở được sticker này để ghép")}});
+  $$("[data-ec]").forEach(b=>b.onclick=async()=>{const c=D.custom.find(z=>z.id===b.dataset.ec);if(!c)return;try{const i=new Image();i.crossOrigin="anonymous";i.src=c.url;await i.decode();let fr=null;if(c.anim){try{fr=await gifFrames(await (await fetch(c.url)).blob())}catch(_){}}addLayer(i,c.name,fr)}catch(e){toast("Không mở được sticker này để ghép")}});
   $("#edTxt").onclick=()=>{openModal({title:"Thêm chữ",small:true,body:`<div class="form"><input class="input" id="tT" placeholder="Ví dụ: Cố lên!" maxlength="40"><div class="row3"><div class="field"><label for="tC">Màu chữ</label><input type="color" id="tC" value="#f08bb8" style="width:100%;height:36px"></div><div class="field"><label for="tF">Kiểu</label><select id="tF"><option value="Baloo 2">Tròn</option><option value="Patrick Hand">Viết tay</option><option value="Silkscreen">Pixel (không dấu)</option></select></div></div></div>`,foot:`<div class="grow"></div><button class="pill-btn primary" id="tOk">Thêm</button>`});
     $("#tT").focus();$("#tOk").onclick=()=>{const t=$("#tT").value.trim();if(!t)return;const fam=$("#tF").value;const c=document.createElement("canvas");const x=c.getContext("2d");x.font=`700 96px "${fam}", system-ui`;const w=Math.ceil(x.measureText(t).width)+20;c.width=w;c.height=130;x.font=`700 96px "${fam}", system-ui`;x.fillStyle=$("#tC").value;x.textBaseline="middle";x.fillText(t,10,68);closeDialog();addLayer(c,"Chữ: "+t)}};
   const L=()=>layers[sel];
@@ -2202,7 +2203,7 @@ function openStickerStudio(){
       if(ui&&i===sel){ctx.save();ctx.translate(ly.x,ly.y);ctx.rotate(ly.r*Math.PI/180);ctx.setLineDash([8,6]);ctx.lineWidth=2;ctx.strokeStyle="#e05a9a";ctx.strokeRect(-w*ly.s/2,-h*ly.s/2,w*ly.s,h*ly.s);
         if(ly.mask!=="none"){ctx.scale(ly.s,ly.s);ctx.setLineDash([4,4]);ctx.lineWidth=2/ly.s;ctx.strokeStyle="#4a7fd8";maskPath(ctx,ly.mask,w,h,ly.pts);ctx.stroke()}ctx.restore()}});
     if(ui&&lasso&&lasso.length>1){ctx.save();ctx.strokeStyle="#4a7fd8";ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.beginPath();lasso.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();ctx.restore()}};
-  const finalCanvas=()=>{const off=document.createElement("canvas");off.width=S;off.height=S;paint(off.getContext("2d"),false);let c=trimCanvas(off);
+  const finalCanvas=box=>{const off=document.createElement("canvas");off.width=S;off.height=S;paint(off.getContext("2d"),false);let c;if(box){c=document.createElement("canvas");c.width=box[2];c.height=box[3];c.getContext("2d").drawImage(off,-box[0],-box[1])}else c=trimCanvas(off);
     if(pix>1){const s=document.createElement("canvas");s.width=Math.max(1,Math.round(c.width/pix));s.height=Math.max(1,Math.round(c.height/pix));const sg=s.getContext("2d");sg.drawImage(c,0,0,s.width,s.height);const d=sg.getImageData(0,0,s.width,s.height);for(let i=3;i<d.data.length;i+=4)d.data[i]=d.data[i]>110?255:0;sg.putImageData(d,0,0);const b=document.createElement("canvas");b.width=s.width*pix;b.height=s.height*pix;const bg=b.getContext("2d");bg.imageSmoothingEnabled=false;bg.drawImage(s,0,0,b.width,b.height);c=b}
     const pad=outline+(shadow?6:0)+4;const o=document.createElement("canvas");o.width=c.width+pad*2;o.height=c.height+pad*2;const og=o.getContext("2d");
     if(outline>0){const sil=document.createElement("canvas");sil.width=c.width;sil.height=c.height;const sg=sil.getContext("2d");sg.drawImage(c,0,0);sg.globalCompositeOperation="source-in";sg.fillStyle=ocol;sg.fillRect(0,0,c.width,c.height);
@@ -2218,18 +2219,21 @@ function openStickerStudio(){
     $$("[data-li]").forEach(r=>r.onclick=e=>{if(e.target.closest("button"))return;sel=+r.dataset.li;sync();draw()});
     $$("[data-lu]").forEach(b=>b.onclick=()=>{const i=+b.dataset.lu;if(i<layers.length-1){[layers[i],layers[i+1]]=[layers[i+1],layers[i]];sel=i+1;sync();draw()}});
     $$("[data-ld]").forEach(b=>b.onclick=()=>{const i=+b.dataset.ld;if(i>0){[layers[i],layers[i-1]]=[layers[i-1],layers[i]];sel=i-1;sync();draw()}});
-    $$("[data-lc]").forEach(b=>b.onclick=()=>{const s=layers[+b.dataset.lc];const c=document.createElement("canvas");c.width=s.c.width;c.height=s.c.height;c.getContext("2d").drawImage(s.c,0,0);layers.push({...s,c,x:s.x+24,y:s.y+24,pts:s.pts&&s.pts.map(p=>[...p])});sel=layers.length-1;sync();draw()});
-    $$("[data-lf]").forEach(b=>b.onclick=()=>{const s=layers[+b.dataset.lf];const c=document.createElement("canvas");c.width=s.c.width;c.height=s.c.height;const x=c.getContext("2d");x.translate(c.width,0);x.scale(-1,1);x.drawImage(s.c,0,0);s.c=c;if(s.pts)s.pts=s.pts.map(([a,b])=>[-a,b]);draw()});
+    $$("[data-lc]").forEach(b=>b.onclick=()=>{const s=layers[+b.dataset.lc];const cp=src=>{const c=document.createElement("canvas");c.width=src.width;c.height=src.height;c.getContext("2d").drawImage(src,0,0);return c};const c=cp(s.c);layers.push({...s,c,frames:s.frames?s.frames.map(f=>({c:cp(f.c),d:f.d})):null,x:s.x+24,y:s.y+24,pts:s.pts&&s.pts.map(p=>[...p])});sel=layers.length-1;sync();draw()});
+    $$("[data-lf]").forEach(b=>b.onclick=()=>{const s=layers[+b.dataset.lf];const fl=src=>{const c=document.createElement("canvas");c.width=src.width;c.height=src.height;const x=c.getContext("2d");x.translate(c.width,0);x.scale(-1,1);x.drawImage(src,0,0);return c};if(s.frames)s.frames.forEach(f=>{f.c=fl(f.c)});s.c=fl(s.c);if(s.pts)s.pts=s.pts.map(([a,b])=>[-a,b]);draw()});
     $$("[data-lx]").forEach(b=>b.onclick=()=>{layers.splice(+b.dataset.lx,1);sel=Math.min(sel,layers.length-1);sync();draw()})};
   const flood=(ly,lx,lyy)=>{const w=ly.c.width,h=ly.c.height;const x0=Math.floor(lx+w/2),y0=Math.floor(lyy+h/2);if(x0<0||y0<0||x0>=w||y0>=h)return false;const cg=ly.c.getContext("2d");const im=cg.getImageData(0,0,w,h),d=im.data;const i0=(y0*w+x0)*4;if(d[i0+3]===0)return false;const R=d[i0],G=d[i0+1],B=d[i0+2];const t2=tol*tol*3;
     const seen=new Uint8Array(w*h);const st=[x0+y0*w];seen[st[0]]=1;let n=0;while(st.length){const p=st.pop();const k=p*4;const dr=d[k]-R,dg=d[k+1]-G,db=d[k+2]-B;if(d[k+3]===0||dr*dr+dg*dg+db*db>t2)continue;d[k+3]=0;n++;const x=p%w,y=(p-x)/w;
       if(x>0&&!seen[p-1]){seen[p-1]=1;st.push(p-1)}if(x<w-1&&!seen[p+1]){seen[p+1]=1;st.push(p+1)}if(y>0&&!seen[p-w]){seen[p-w]=1;st.push(p-w)}if(y<h-1&&!seen[p+w]){seen[p+w]=1;st.push(p+w)}}
     for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const k=(y*w+x)*4;if(d[k+3]&&(d[k-1]===0||d[k+7]===0||d[k-w*4+3]===0||d[k+w*4+3]===0))d[k+3]=Math.min(d[k+3],170)}
     cg.putImageData(im,0,0);return n>0};
+  const floodAll=(ly,a,b)=>{if(!ly.frames)return flood(ly,a,b);let ok=false;ly.frames.forEach(fr=>{if(flood({...ly,c:fr.c},a,b))ok=true});return ok};
+  let at0=performance.now(),atT=0;function animTick(){if(atT)return;const step=()=>{atT=0;if(!document.body.contains(cv))return;if(!layers.some(l=>l.frames))return;const t=performance.now()-at0;layers.forEach(l=>{if(!l.frames)return;l.c=frameAt(l,t)});draw();if((step.k=(step.k||0)+1)%3===0)preview();atT=setTimeout(step,60)};atT=setTimeout(step,60)}
+  const frameAt=(l,t)=>{const tot=l.frames.reduce((a,f)=>a+f.d,0)||1;let u=t%tot;for(const f of l.frames){if(u<f.d)return f.c;u-=f.d}return l.frames[0].c};
   let drag=null;
   cv.addEventListener("pointerdown",e=>{const [px,py]=ptr(e);cv.setPointerCapture(e.pointerId);
     if(tool==="move"){let hit=-1;for(let i=layers.length-1;i>=0;i--){const ly=layers[i];const [lx,lyy]=toLocal(ly,px,py);if(Math.abs(lx)<=ly.c.width/2&&Math.abs(lyy)<=ly.c.height/2){hit=i;break}}if(hit>=0){sel=hit;sync();drag={ox:px-layers[hit].x,oy:py-layers[hit].y}}draw()}
-    else if(tool==="wand"&&L()){const [lx,lyy]=toLocal(L(),px,py);if(!flood(L(),lx,lyy))toast("Bấm vào vùng nền của lớp đang chọn");draw()}
+    else if(tool==="wand"&&L()){const [lx,lyy]=toLocal(L(),px,py);if(!floodAll(L(),lx,lyy))toast("Bấm vào vùng nền của lớp đang chọn");draw()}
     else if(tool==="lasso"&&L()){lasso=[[px,py]]}});
   cv.addEventListener("pointermove",e=>{const [px,py]=ptr(e);if(tool==="move"&&drag&&L()){L().x=px-drag.ox;L().y=py-drag.oy;draw()}else if(tool==="lasso"&&lasso){lasso.push([px,py]);draw()}});
   const end=()=>{drag=null;if(lasso&&L()){if(lasso.length>8){L().pts=lasso.map(([px,py])=>toLocal(L(),px,py));L().mask="lasso";sync()}lasso=null;draw()}};
@@ -2238,12 +2242,20 @@ function openStickerStudio(){
   $$("[data-tool]").forEach(b=>b.onclick=()=>{tool=b.dataset.tool;$$("[data-tool]").forEach(x=>x.setAttribute("aria-pressed",x===b));cv.style.cursor=tool==="move"?"grab":"crosshair"});
   $("#edMask").onchange=e=>{if(!L())return;L().mask=e.target.value;if(L().mask==="lasso"&&!L().pts){toast("Chọn công cụ “Cắt tự do” rồi vẽ một vòng quanh phần muốn giữ");tool="lasso";$$("[data-tool]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.tool==="lasso"))}draw()};
   $("#edTol").oninput=e=>tol=+e.target.value;
-  $("#edAuto").onclick=()=>{const ly=L();if(!ly)return;const w=ly.c.width,h=ly.c.height;[[-w/2+1,-h/2+1],[w/2-2,-h/2+1],[-w/2+1,h/2-2],[w/2-2,h/2-2]].forEach(([a,b])=>flood(ly,a,b));draw()};
+  $("#edAuto").onclick=()=>{const ly=L();if(!ly)return;const w=ly.c.width,h=ly.c.height;[[-w/2+1,-h/2+1],[w/2-2,-h/2+1],[-w/2+1,h/2-2],[w/2-2,h/2-2]].forEach(([a,b])=>floodAll(ly,a,b));draw()};
   $("#edRot").oninput=e=>{if(L()){L().r=+e.target.value;draw()}};$("#edSc").oninput=e=>{if(L()){L().s=+e.target.value;draw()}};
   $("#edOl").oninput=e=>{outline=+e.target.value;draw()};$("#edOc").oninput=e=>{ocol=e.target.value;draw()};$("#edPix").oninput=e=>{pix=+e.target.value;draw()};$("#edSh").onchange=e=>{shadow=e.target.checked;draw()};
   $("#edClear").onclick=()=>{layers.length=0;sel=-1;sync();draw()};
-  $("#edDl").onclick=async()=>{if(!layers.length)return toast("Chưa có gì để tải");const f=finalCanvas();const blob=await new Promise(r=>f.toBlob(r,"image/png"));saveFile("sticker.png",blob,"image/png")};
-  $("#edSave").onclick=async()=>{if(!layers.length)return toast("Thêm ít nhất một lớp ảnh");$("#edSave").disabled=true;try{const it=await saveCustomSticker(finalCanvas(),"Sticker cắt ghép",true);if(it){closeViewer();UI.fly="stk";renderRail();renderFly();toast("Đã lưu vào “Sticker của bạn” và dán lên màn hình")}}catch(e){toast("Không lưu được: "+(e.message||e))}$("#edSave")&&($("#edSave").disabled=false)};
+  const animated=()=>layers.some(l=>l.frames);
+  const buildGif=async()=>{const tot=Math.min(6000,Math.max(...layers.filter(l=>l.frames).map(l=>l.frames.reduce((a,f)=>a+f.d,0))));const step=Math.max(40,Math.round(tot/80));const n=Math.max(2,Math.round(tot/step));
+    const offs=[];for(let i=0;i<n;i++){const t=i*step;layers.forEach(l=>{if(l.frames)l.c=frameAt(l,t)});const off=document.createElement("canvas");off.width=S;off.height=S;paint(off.getContext("2d"),false);offs.push(off)}
+    let x0=S,y0=S,x1=-1,y1=-1;offs.forEach(o=>{const d=o.getContext("2d").getImageData(0,0,S,S).data;for(let y=0;y<S;y+=2)for(let x=0;x<S;x+=2)if(d[(y*S+x)*4+3]>8){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}});if(x1<0)throw new Error("trống");
+    const box=[Math.max(0,x0-2),Math.max(0,y0-2),Math.min(S,x1+3)-Math.max(0,x0-2),Math.min(S,y1+3)-Math.max(0,y0-2)];const frames=[];
+    for(let i=0;i<n;i++){const t=i*step;layers.forEach(l=>{if(l.frames)l.c=frameAt(l,t)});let f=finalCanvas(box);const mx=320;if(f.width>mx||f.height>mx){const k=mx/Math.max(f.width,f.height);const o=document.createElement("canvas");o.width=Math.round(f.width*k);o.height=Math.round(f.height*k);o.getContext("2d").drawImage(f,0,0,o.width,o.height);f=o}frames.push({c:f,d:step});if(i%8===7)await new Promise(r=>setTimeout(r,0))}
+    return encodeGif(frames)};
+  const mvSel=$("#edMv");if(mvSel)mvSel.onchange=()=>{const w=$("#edPrevW");if(w)w.dataset.mv=mvSel.value};
+  $("#edDl").onclick=async()=>{if(!layers.length)return toast("Chưa có gì để tải");if(animated()){toast("Đang tạo GIF động…");try{saveFile("sticker.gif",await buildGif(),"image/gif")}catch(e){toast("Không tạo được GIF")}return}const f=finalCanvas();const blob=await new Promise(r=>f.toBlob(r,"image/png"));saveFile("sticker.png",blob,"image/png")};
+  $("#edSave").onclick=async()=>{if(!layers.length)return toast("Thêm ít nhất một lớp ảnh");$("#edSave").disabled=true;const mv=($("#edMv")||{}).value||"bob";try{let it;if(animated()){toast("Đang tạo sticker GIF động…");it=await saveGifSticker(await buildGif(),"Sticker động cắt ghép",{x:50,y:45},mv)}else{it=await saveCustomSticker(finalCanvas(),"Sticker cắt ghép",true);if(it){it.mv=mv;const st=D.stickers[D.stickers.length-1];if(st&&st.k==="c:"+it.id&&mv!=="bob"){st.mv=mv;renderStickers();saveDecor()}}}if(it){closeViewer();UI.fly="stk";renderRail();renderFly();toast("Đã lưu vào “Sticker của bạn” và dán lên màn hình")}}catch(e){toast("Không lưu được: "+(e.message||e))}$("#edSave")&&($("#edSave").disabled=false)};
   sync();draw();
 }
 
@@ -4211,6 +4223,259 @@ const _renderCalPage18=renderCalPage;renderCalPage=async function(...a){const r=
 {const _bp18=bgPopover;bgPopover=function(anchor){const old=$(".popmenu.wide .bgpop");const top=old?old.parentElement.scrollTop:0;const r=_bp18(anchor);const m=$(".popmenu.wide");if(m&&old){m.style.animation="none";m.scrollTop=top}return r}}
 /* trang chủ vẽ lại sau khi đổi giao diện: giữ vị trí cuộn */
 {const _rh18=renderHome;renderHome=function(...a){const keep=!!$("#dgrid");const sc=$("#main");const top=sc?sc.scrollTop:0;const y=scrollY;const r=_rh18.apply(this,a);if(keep){if(sc&&top)sc.scrollTop=top;if(y)scrollTo(0,y)}return r}}
+
+/* gifenc 1.0.3 — (c) 2017 Matt DesLauriers, MIT License — mã hóa ảnh GIF động */
+window.GIFENC=(function(){var X={signature:"GIF",version:"89a",trailer:59,extensionIntroducer:33,applicationExtensionLabel:255,graphicControlExtensionLabel:249,imageSeparator:44,signatureSize:3,versionSize:3,globalColorTableFlagMask:128,colorResolutionMask:112,sortFlagMask:8,globalColorTableSizeMask:7,applicationIdentifierSize:8,applicationAuthCodeSize:3,disposalMethodMask:28,userInputFlagMask:2,transparentColorFlagMask:1,localColorTableFlagMask:128,interlaceFlagMask:64,idSortFlagMask:32,localColorTableSizeMask:7};function F(t=256){let e=0,s=new Uint8Array(t);return{get buffer(){return s.buffer},reset(){e=0},bytesView(){return s.subarray(0,e)},bytes(){return s.slice(0,e)},writeByte(r){n(e+1),s[e]=r,e++},writeBytes(r,o=0,i=r.length){n(e+i);for(let c=0;c<i;c++)s[e++]=r[c+o]},writeBytesView(r,o=0,i=r.byteLength){n(e+i),s.set(r.subarray(o,o+i),e),e+=i}};function n(r){var o=s.length;if(o>=r)return;var i=1024*1024;r=Math.max(r,o*(o<i?2:1.125)>>>0),o!=0&&(r=Math.max(r,256));let c=s;s=new Uint8Array(r),e>0&&s.set(c.subarray(0,e),0)}}var O=12,J=5003,lt=[0,1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535];function at(t,e,s,n,r=F(512),o=new Uint8Array(256),i=new Int32Array(J),c=new Int32Array(J)){let x=i.length,a=Math.max(2,n);o.fill(0),c.fill(0),i.fill(-1);let l=0,f=0,g=a+1,h=g,b=!1,w=h,_=(1<<w)-1,u=1<<g-1,k=u+1,B=u+2,p=0,A=s[0],z=0;for(let y=x;y<65536;y*=2)++z;z=8-z,r.writeByte(a),I(u);let d=s.length;for(let y=1;y<d;y++){t:{let m=s[y],v=(m<<O)+A,M=m<<z^A;if(i[M]===v){A=c[M];break t}let V=M===0?1:x-M;for(;i[M]>=0;)if(M-=V,M<0&&(M+=x),i[M]===v){A=c[M];break t}I(A),A=m,B<1<<O?(c[M]=B++,i[M]=v):(i.fill(-1),B=u+2,b=!0,I(u))}}return I(A),I(k),r.writeByte(0),r.bytesView();function I(y){for(l&=lt[f],f>0?l|=y<<f:l=y,f+=w;f>=8;)o[p++]=l&255,p>=254&&(r.writeByte(p),r.writeBytesView(o,0,p),p=0),l>>=8,f-=8;if((B>_||b)&&(b?(w=h,_=(1<<w)-1,b=!1):(++w,_=w===O?1<<w:(1<<w)-1)),y==k){for(;f>0;)o[p++]=l&255,p>=254&&(r.writeByte(p),r.writeBytesView(o,0,p),p=0),l>>=8,f-=8;p>0&&(r.writeByte(p),r.writeBytesView(o,0,p),p=0)}}}var $=at;function D(t,e,s){return t<<8&63488|e<<2&992|s>>3}function G(t,e,s,n){return t>>4|e&240|(s&240)<<4|(n&240)<<8}function j(t,e,s){return t>>4<<8|e&240|s>>4}function R(t,e,s){return t<e?e:t>s?s:t}function T(t){return t*t}function tt(t,e,s){var n=0,r=1e100;let o=t[e],i=o.cnt,c=o.ac,x=o.rc,a=o.gc,l=o.bc;for(var f=o.fw;f!=0;f=t[f].fw){let h=t[f],b=h.cnt,w=i*b/(i+b);if(!(w>=r)){var g=0;s&&(g+=w*T(h.ac-c),g>=r)||(g+=w*T(h.rc-x),!(g>=r)&&(g+=w*T(h.gc-a),!(g>=r)&&(g+=w*T(h.bc-l),!(g>=r)&&(r=g,n=f))))}}o.err=r,o.nn=n}function Q(){return{ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0}}function ut(t,e){let s=e==="rgb444"?4096:65536,n=new Array(s),r=t.length;if(e==="rgba4444")for(let o=0;o<r;++o){let i=t[o],c=i>>24&255,x=i>>16&255,a=i>>8&255,l=i&255,f=G(l,a,x,c),g=f in n?n[f]:n[f]=Q();g.rc+=l,g.gc+=a,g.bc+=x,g.ac+=c,g.cnt++}else if(e==="rgb444")for(let o=0;o<r;++o){let i=t[o],c=i>>16&255,x=i>>8&255,a=i&255,l=j(a,x,c),f=l in n?n[l]:n[l]=Q();f.rc+=a,f.gc+=x,f.bc+=c,f.cnt++}else for(let o=0;o<r;++o){let i=t[o],c=i>>16&255,x=i>>8&255,a=i&255,l=D(a,x,c),f=l in n?n[l]:n[l]=Q();f.rc+=a,f.gc+=x,f.bc+=c,f.cnt++}return n}function H(t,e,s={}){let{format:n="rgb565",clearAlpha:r=!0,clearAlphaColor:o=0,clearAlphaThreshold:i=0,oneBitAlpha:c=!1}=s;if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array)&&!(t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");let x=new Uint32Array(t.buffer),a=s.useSqrt!==!1,l=n==="rgba4444",f=ut(x,n),g=f.length,h=g-1,b=new Uint32Array(g+1);for(var w=0,u=0;u<g;++u){let C=f[u];if(C!=null){var _=1/C.cnt;l&&(C.ac*=_),C.rc*=_,C.gc*=_,C.bc*=_,f[w++]=C}}T(e)/w<.022&&(a=!1);for(var u=0;u<w-1;++u)f[u].fw=u+1,f[u+1].bk=u,a&&(f[u].cnt=Math.sqrt(f[u].cnt));a&&(f[u].cnt=Math.sqrt(f[u].cnt));var k,B,p;for(u=0;u<w;++u){tt(f,u,!1);var A=f[u].err;for(B=++b[0];B>1&&(p=B>>1,!(f[k=b[p]].err<=A));B=p)b[B]=k;b[B]=u}var z=w-e;for(u=0;u<z;){for(var d;;){var I=b[1];if(d=f[I],d.tm>=d.mtm&&f[d.nn].mtm<=d.tm)break;d.mtm==h?I=b[1]=b[b[0]--]:(tt(f,I,!1),d.tm=u);var A=f[I].err;for(B=1;(p=B+B)<=b[0]&&(p<b[0]&&f[b[p]].err>f[b[p+1]].err&&p++,!(A<=f[k=b[p]].err));B=p)b[B]=k;b[B]=I}var y=f[d.nn],m=d.cnt,v=y.cnt,_=1/(m+v);l&&(d.ac=_*(m*d.ac+v*y.ac)),d.rc=_*(m*d.rc+v*y.rc),d.gc=_*(m*d.gc+v*y.gc),d.bc=_*(m*d.bc+v*y.bc),d.cnt+=y.cnt,d.mtm=++u,f[y.bk].fw=y.fw,f[y.fw].bk=y.bk,y.mtm=h}let M=[];var V=0;for(u=0;;++V){let L=R(Math.round(f[u].rc),0,255),C=R(Math.round(f[u].gc),0,255),Y=R(Math.round(f[u].bc),0,255),E=255;if(l){if(E=R(Math.round(f[u].ac),0,255),c){let st=typeof c=="number"?c:127;E=E<=st?0:255}r&&E<=i&&(L=C=Y=o,E=0)}let K=l?[L,C,Y,E]:[L,C,Y];if(xt(M,K)||M.push(K),(u=f[u].fw)==0)break}return M}function xt(t,e){for(let s=0;s<t.length;s++){let n=t[s],r=n[0]===e[0]&&n[1]===e[1]&&n[2]===e[2],o=n.length>=4&&e.length>=4?n[3]===e[3]:!0;if(r&&o)return!0}return!1}function U(t,e){var s=0,n;for(n=0;n<t.length;n++){let r=t[n]-e[n];s+=r*r}return s}function P(t,e){return e>1?Math.round(t/e)*e:t}function et(t,{roundRGB:e=5,roundAlpha:s=10,oneBitAlpha:n=null}={}){let r=new Uint32Array(t.buffer);for(let o=0;o<r.length;o++){let i=r[o],c=i>>24&255,x=i>>16&255,a=i>>8&255,l=i&255;if(c=P(c,s),n){let f=typeof n=="number"?n:127;c=c<=f?0:255}l=P(l,e),a=P(a,e),x=P(x,e),r[o]=c<<24|x<<16|a<<8|l<<0}}function nt(t,e,s="rgb565"){if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array)&&!(t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");if(e.length>256)throw new Error("applyPalette() only works with 256 colors or less");let n=new Uint32Array(t.buffer),r=n.length,o=s==="rgb444"?4096:65536,i=new Uint8Array(r),c=new Array(o),x=s==="rgba4444";if(s==="rgba4444")for(let a=0;a<r;a++){let l=n[a],f=l>>24&255,g=l>>16&255,h=l>>8&255,b=l&255,w=G(b,h,g,f),_=w in c?c[w]:c[w]=gt(b,h,g,f,e);i[a]=_}else{let a=s==="rgb444"?j:D;for(let l=0;l<r;l++){let f=n[l],g=f>>16&255,h=f>>8&255,b=f&255,w=a(b,h,g),_=w in c?c[w]:c[w]=bt(b,h,g,e);i[l]=_}}return i}function gt(t,e,s,n,r){let o=0,i=1e100;for(let c=0;c<r.length;c++){let x=r[c],a=x[3],l=q(a-n);if(l>i)continue;let f=x[0];if(l+=q(f-t),l>i)continue;let g=x[1];if(l+=q(g-e),l>i)continue;let h=x[2];l+=q(h-s),!(l>i)&&(i=l,o=c)}return o}function bt(t,e,s,n){let r=0,o=1e100;for(let i=0;i<n.length;i++){let c=n[i],x=c[0],a=q(x-t);if(a>o)continue;let l=c[1];if(a+=q(l-e),a>o)continue;let f=c[2];a+=q(f-s),!(a>o)&&(o=a,r=i)}return r}function rt(t,e,s=5){if(!t.length||!e.length)return;let n=t.map(i=>i.slice(0,3)),r=s*s,o=t[0].length;for(let i=0;i<e.length;i++){let c=e[i];c.length<o?c=[c[0],c[1],c[2],255]:c.length>o?c=c.slice(0,3):c=c.slice();let x=N(n,c.slice(0,3),U),a=x[0],l=x[1];l>0&&l<=r&&(t[a]=c)}}function q(t){return t*t}function W(t,e,s=U){let n=Infinity,r=-1;for(let o=0;o<t.length;o++){let i=t[o],c=s(e,i);c<n&&(n=c,r=o)}return r}function N(t,e,s=U){let n=Infinity,r=-1;for(let o=0;o<t.length;o++){let i=t[o],c=s(e,i);c<n&&(n=c,r=o)}return[r,n]}function ot(t,e,s=U){return t[W(t,e,s)]}function ct(t={}){let{initialCapacity:e=4096,auto:s=!0}=t,n=F(e),r=5003,o=new Uint8Array(256),i=new Int32Array(r),c=new Int32Array(r),x=!1;return{reset(){n.reset(),x=!1},finish(){n.writeByte(X.trailer)},bytes(){return n.bytes()},bytesView(){return n.bytesView()},get buffer(){return n.buffer},get stream(){return n},writeHeader:a,writeFrame(l,f,g,h={}){let{transparent:b=!1,transparentIndex:w=0,delay:_=0,palette:u=null,repeat:k=0,colorDepth:B=8,dispose:p=-1}=h,A=!1;if(s?x||(A=!0,a(),x=!0):A=Boolean(h.first),f=Math.max(0,Math.floor(f)),g=Math.max(0,Math.floor(g)),A){if(!u)throw new Error("First frame must include a { palette } option");pt(n,f,g,u,B),it(n,u),k>=0&&dt(n,k)}let z=Math.round(_/10);wt(n,p,z,b,w);let d=Boolean(u)&&!A;ht(n,f,g,d?u:null),d&&it(n,u),yt(n,l,f,g,B,o,i,c)}};function a(){ft(n,"GIF89a")}}function wt(t,e,s,n,r){t.writeByte(33),t.writeByte(249),t.writeByte(4),r<0&&(r=0,n=!1);var o,i;n?(o=1,i=2):(o=0,i=0),e>=0&&(i=e&7),i<<=2;let c=0;t.writeByte(0|i|c|o),S(t,s),t.writeByte(r||0),t.writeByte(0)}function pt(t,e,s,n,r=8){let o=1,i=0,c=Z(n.length)-1,x=o<<7|r-1<<4|i<<3|c,a=0,l=0;S(t,e),S(t,s),t.writeBytes([x,a,l])}function dt(t,e){t.writeByte(33),t.writeByte(255),t.writeByte(11),ft(t,"NETSCAPE2.0"),t.writeByte(3),t.writeByte(1),S(t,e),t.writeByte(0)}function it(t,e){let s=1<<Z(e.length);for(let n=0;n<s;n++){let r=[0,0,0];n<e.length&&(r=e[n]),t.writeByte(r[0]),t.writeByte(r[1]),t.writeByte(r[2])}}function ht(t,e,s,n){if(t.writeByte(44),S(t,0),S(t,0),S(t,e),S(t,s),n){let r=0,o=0,i=Z(n.length)-1;t.writeByte(128|r|o|0|i)}else t.writeByte(0)}function yt(t,e,s,n,r=8,o,i,c){$(s,n,e,r,t,o,i,c)}function S(t,e){t.writeByte(e&255),t.writeByte(e>>8&255)}function ft(t,e){for(var s=0;s<e.length;s++)t.writeByte(e.charCodeAt(s))}function Z(t){return Math.max(Math.ceil(Math.log2(t)),1)}var Bt=ct;
+return {GIFEncoder:ct,applyPalette:nt,quantize:H};})();
+
+/* =====================================================================
+   v18 — HỌA TIẾT & STICKER PIXEL ĐỒNG BỘ MỌI GIAO DIỆN · STICKER GIF ĐỘNG ·
+   STICKER CHUYỂN ĐỘNG (đi, chạy, nhảy, theo chuột, né chuột, bấm để tương tác)
+   ===================================================================== */
+UI.pat=Object.assign({on:true,style:"auto",dens:1,size:1,alpha:.6,tw:true,col:"auto",c1:"#ffffff",c2:"#ffe08a",c3:"#bfe3ff",stk:true,ai:true},local.get("pat",{}));
+const savePat=()=>{local.set("pat",UI.pat);clearTimeout(savePat._t);savePat._t=setTimeout(()=>{try{saveDecor()}catch(e){}},500)};
+const PAT_STY={auto:"Theo giao diện",sparkle:"Sao lấp lánh",star:"Ngôi sao",heart:"Trái tim",dot:"Chấm bi",plus:"Dấu cộng",flower:"Hoa nhí",snow:"Bông tuyết",note:"Nốt nhạc",circuit:"Mạch điện",none:"Không"};
+const PAT_AUTO={demsao:"sparkle",pastel:"heart",bangden:"plus",matrix:"circuit",terminal:"circuit",sakura:"flower",ocean:"dot",lavender:"sparkle",matcha:"flower",peach:"heart",midnight:"star",neon:"circuit",coffee:"dot",mint:"plus",nord:"snow",ink:"note",dem:"sparkle",sang:"dot"};
+/* đọc màu thật của biến CSS (kể cả color-mix) */
+const _probe=(()=>{let el=null;return v=>{if(!el){el=document.createElement("i");el.style.cssText="position:absolute;width:0;height:0;visibility:hidden";document.body.appendChild(el)}el.style.color="";el.style.color=v;const c=getComputedStyle(el).color;let m=c.match(/rgba?\(([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)/);if(m)return [+m[1],+m[2],+m[3]];m=c.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/);if(m)return [m[1]*255,m[2]*255,m[3]*255].map(Math.round);return [255,255,255]}})();
+const p19toHex=a=>"#"+a.map(x=>Math.max(0,Math.min(255,Math.round(x))).toString(16).padStart(2,"0")).join("");
+function p19hsl([r,g,b]){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0;const l=(mx+mn)/2;if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);h=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4;h/=6}return [h,s,l]}
+function p19rgb([h,s,l]){if(!s)return [l*255,l*255,l*255];const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q;const f=t=>{t=(t+1)%1;return t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p};return [f(h+1/3)*255,f(h)*255,f(h-1/3)*255]}
+const p19hex=h=>{h=String(h).replace("#","");if(h.length===3)h=h.split("").map(x=>x+x).join("");return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)||0)};
+function themeCols(){const dark=document.documentElement.getAttribute("data-theme")!=="light";const a=_probe("var(--accent)"),s=_probe("var(--sig)"),r=_probe("var(--pen-red, #ff8bb0)");
+  return dark?["#ffffff",p19toHex(a),p19toHex(s),p19toHex(r)]:[p19toHex(a),p19toHex(s),p19toHex(r),p19toHex(a.map(x=>x*.75))]}
+function patCols(){return UI.pat.col==="auto"?themeCols():[UI.pat.c1,UI.pat.c2,UI.pat.c3,UI.pat.c1]}
+function patStyle(){return UI.pat.style==="auto"?(PAT_AUTO[UI.skin]||"sparkle"):UI.pat.style}
+/* vẽ một ô họa tiết pixel lặp lại */
+function patTile(style,cols,{dens=1,size=1,seed=7,alpha=.6}={}){
+  const S=Math.round(180*size),u=Math.max(1,Math.round(2*size));const c=document.createElement("canvas");c.width=c.height=S;const g=c.getContext("2d");g.globalAlpha=alpha;let sd=seed;const r=()=>(sd=(sd*16807)%2147483647)/2147483647;
+  const R=(x,y,w,h)=>g.fillRect(Math.round(x),Math.round(y),w*u,h*u);const M=(x,y,rows)=>rows.forEach((row,j)=>[...row].forEach((ch,i)=>{if(ch!==".")R(x+i*u,y+j*u,1,1)}));
+  const n=Math.round(14*dens);
+  for(let i=0;i<n;i++){const x=Math.floor(r()*(S-12*u)),y=Math.floor(r()*(S-12*u)),t=r();g.fillStyle=cols[i%cols.length];
+    switch(style){
+     case"sparkle":if(t<.45)R(x,y,1,1);else if(t<.8){R(x,y-u,1,3);R(x-u,y,3,1)}else{R(x+u,y,1,5);R(x-u,y+2*u,5,1);R(x,y+u,3,3)}break;
+     case"star":t<.4?R(x,y,1,1):M(x,y,["..#..","..#..","#####",".###.",".#.#."]);break;
+     case"heart":t<.35?R(x,y,1,1):M(x,y,t<.7?[".#.#.","#####","#####",".###.","..#.."]:["##.##","#####",".###.","..#.."]);break;
+     case"dot":t<.5?R(x,y,2,2):M(x,y,[".##.","####","####",".##."]);break;
+     case"plus":t<.4?R(x,y,1,1):M(x,y,t<.75?[".#.","###",".#."]:["..#..","..#..","#####","..#..","..#.."]);break;
+     case"flower":if(t<.35)R(x,y,1,1);else{M(x,y,[".#.","#.#",".#."]);g.fillStyle=cols[(i+1)%cols.length];R(x+u,y+u,1,1)}break;
+     case"snow":t<.4?R(x,y,1,1):M(x,y,["#.#.#",".###.","##.##",".###.","#.#.#"]);break;
+     case"note":t<.4?R(x,y,1,1):M(x,y,t<.7?["..##","..#.","..#.","###.","##.."]:[".####",".#..#",".#..#","##.##","##.##"]);break;
+     case"circuit":{if(t<.3){R(x,y,2,2);break}const L=4+Math.floor(r()*8);if(t<.65){R(x,y,L,1);R(x+L*u,y-u,2,3)}else{R(x,y,1,L);R(x-u,y+L*u,3,2)}break}
+    }}
+  return c.toDataURL()}
+function applyPat(){let L=$("#patl");if(!L){L=document.createElement("div");L.id="patl";L.setAttribute("aria-hidden","true");L.innerHTML="<i></i><i></i>";const w=$("#wall");if(w)w.after(L);else document.body.prepend(L)}
+  const st=patStyle();const on=UI.pat.on&&st!=="none";L.hidden=!on;document.body.style.backgroundImage="";if(!on)return;
+  const cols=patCols();const o={dens:UI.pat.dens,size:UI.pat.size,alpha:UI.pat.alpha};const [a,b]=L.children;
+  a.style.backgroundImage=`url(${patTile(st,cols,{...o,seed:7})})`;b.style.backgroundImage=`url(${patTile(st,cols,{...o,seed:31,dens:o.dens*.8})})`;
+  L.classList.toggle("tw",!!UI.pat.tw&&!UI.reduceMotion);L.classList.toggle("px",true)}
+
+/* ---------- sticker pixel đổi màu theo giao diện ---------- */
+const _stkURL19=stkURL;const _stkReg=new Set();
+function stkThemeKey(){const c=themeCols();return c.join("").replace(/#/g,"")}
+stkURL=function(k,scale){if(UI.pat&&UI.pat.stk&&STK[k]&&!String(k).includes("~")){const tk=k+"~"+stkThemeKey();if(!_stkReg.has(tk)){_stkReg.add(tk);const base=STK[k];const [A,B]=(()=>{const c=themeCols();const dark=document.documentElement.getAttribute("data-theme")!=="light";return dark?[c[1],c[2]]:[c[0],c[1]]})();
+    const hA=p19hsl(p19hex(A)),hB=p19hsl(p19hex(B));
+    STK[tk]=()=>{const [g,pal]=base();const np={};Object.entries(pal).forEach(([ch,col])=>{if(typeof col!=="string"||!/^#/.test(col)){np[ch]=col;return}const [h,s,l]=p19hsl(p19hex(col));if(s<.12||l>.93||l<.1){np[ch]=col;return}
+      const warm=h<.17||h>.8;const tgt=warm?hA:hB;np[ch]=p19toHex(p19rgb([tgt[0],Math.min(1,(s*.5+tgt[1]*.5)*1.05),l]))});return [g,np]}}
+    return _stkURL19(tk,scale)}return _stkURL19(k,scale)};
+
+/* ---------- sticker GIF động (giữ nguyên chuyển động) ---------- */
+const _importStk19=importStickerFiles;
+importStickerFiles=async function(files,at){const anim=files.filter(f=>f.type==="image/gif"||/\.gif$/i.test(f.name||""));const rest=files.filter(f=>!anim.includes(f));
+  for(const f of anim.slice(0,6)){try{if(f.size>15e6){toast(f.name+": GIF quá lớn (tối đa 15 MB)");continue}
+      const src=await fileToURL(f);const im=await loadImg(src);const W=im.naturalWidth||120,H=im.naturalHeight||120;let url=null,asset=null;
+      if(P.assets&&!P.local){try{const up=await P.assets.upload(f);url=up.url;asset=up.id}catch(e){}}
+      if(!url){if(!P.local&&src.length>160000){toast(f.name+": GIF hơi lớn để lưu ở đây — hãy dùng GIF dưới 120 KB",4500);continue}url=src}
+      const k=Math.min(1,180/Math.max(W,H));const item={id:mkid("cs"),url,asset,w:Math.max(8,Math.round(W/3*k)),h:Math.max(8,Math.round(H/3*k)),name:(f.name||"GIF").replace(/\.[^.]+$/,""),anim:true};
+      D.custom.push(item);saveDecor();const st=addSticker("c:"+item.id,at||{});if(UI.pat.ai)stkAIMotion(st,true)}catch(e){toast("Không đọc được "+f.name)}}
+  if(anim.length&&!rest.length){if(!UI.decorating){UI.fly="stk";renderRail();renderFly()}toast("Đã thêm sticker GIF động — kéo để đặt vị trí");return}
+  const before=new Set(D.stickers.map(s=>s.id));const r=rest.length?await _importStk19(rest,at):undefined;
+  if(UI.pat.ai)D.stickers.filter(s=>!before.has(s.id)&&String(s.k).startsWith("c:")).forEach(s=>stkAIMotion(s,true));return r};
+
+/* ---------- chuyển động cho sticker ---------- */
+const STK_MV={none:"Đứng yên",bob:"Nhún nhẹ",hop:"Nhảy tại chỗ",dance:"Nhún nhảy",wiggle:"Lắc lư",float:"Bay lơ lửng",spin:"Xoay tròn",walk:"Đi qua lại",run:"Chạy khắp màn hình",roam:"Đi lang thang",follow:"Đi theo chuột",shy:"Né chuột"};
+const MV_MOVE=new Set(["walk","run","roam","follow","shy"]);
+const MV_SAY=["Hi! ♡","Học tiếp nào!","Cố lên!","Nghỉ chút nhé?","♪ ♫","Yay!","Uống nước đi ♡","Giỏi quá!"];
+let _mvRaf=0,_mvLast=0,_mx=-1e4,_my=-1e4;const _rt=new Map();
+addEventListener("pointermove",e=>{_mx=e.clientX;_my=e.clientY},{passive:true});
+const _stkPlace19=stkPlace;stkPlace=function(el,st,m){_stkPlace19(el,st,m);const im=el.firstChild;if(im){im.style.transform="";im.style.scale=st.f?"-1 1":""}
+  const mv=st.mv||"bob";el.classList.toggle("mv",mv!=="bob");el.dataset.mv=mv;el.classList.toggle("mv-i",(mv!=="none"&&mv!=="bob")||!!(st.say&&st.say.length));if(!MV_MOVE.has(mv)){el.style.translate="";_rt.delete(st.id)}};
+const _renderStk19=renderStickers;renderStickers=function(){_renderStk19();$$("#decor .stk").forEach(el=>{const st=D.stickers.find(s=>s.id===el.dataset.id);if(!st)return;const m=stkBase(st.k);if(m)stkPlace(el,st,m);if(m&&m.custom){const c=D.custom.find(z=>"c:"+z.id===st.k);if(c&&c.anim)el.classList.add("gif")}});mvKick()};
+function mvKick(){if(_mvRaf)return;if(!D.stickers.some(s=>MV_MOVE.has(s.mv)))return;_mvLast=performance.now();_mvRaf=requestAnimationFrame(mvLoop)}
+function mvLoop(now){_mvRaf=0;const dt=Math.min(.05,(now-_mvLast)/1000);_mvLast=now;const W=innerWidth,H=innerHeight;let any=false;
+  if(!document.hidden&&!UI.decorating&&!RM())D.stickers.forEach(st=>{if(!MV_MOVE.has(st.mv))return;const el=$(`#decor .stk[data-id="${st.id}"]`);if(!el)return;any=true;
+    const m=stkBase(st.k);if(!m)return;const ax=st.x/100*W,ay=st.y/100*H,hw=m.w*st.s/2;let r=_rt.get(st.id);if(!r){r={ox:0,oy:0,dir:Math.random()<.5?-1:1,t:Math.random()*9,pause:0,tx:0,ty:0,spd:0};_rt.set(st.id,r)}r.t+=dt;
+    const lim=(v,a,b)=>Math.max(a,Math.min(b,v));const minX=hw+4-ax,maxX=W-hw-4-ax,minY=40-ay,maxY=H-30-ay;let bounce=0,moving=false;
+    if(st.mv==="walk"||st.mv==="run"){const span=st.mv==="run"?1e9:Math.min(W*.22,280);const sp=st.mv==="run"?150:55;if(r.pause>0){r.pause-=dt}else{r.ox+=r.dir*sp*dt;moving=true;
+        if(r.ox>Math.min(span,maxX)||r.ox<Math.max(-span,minX)){r.dir*=-1;r.ox=lim(r.ox,Math.max(-span,minX),Math.min(span,maxX));if(Math.random()<.5)r.pause=.4+Math.random()*1.2}}
+      bounce=moving?-Math.abs(Math.sin(r.t*(st.mv==="run"?13:8)))*(st.mv==="run"?10:5):0}
+    else if(st.mv==="roam"){if(r.pause>0)r.pause-=dt;else{const dx=r.tx-r.ox,dy=r.ty-r.oy,d=Math.hypot(dx,dy);if(d<4){r.pause=.8+Math.random()*2.5;const R=Math.min(W*.3,320);r.tx=lim((Math.random()*2-1)*R,minX,maxX);r.ty=lim((Math.random()*2-1)*R*.5,minY,maxY)}else{const sp=60;r.ox+=dx/d*sp*dt;r.oy+=dy/d*sp*dt;r.dir=dx>0?1:-1;moving=true}}bounce=moving?-Math.abs(Math.sin(r.t*9))*5:0}
+    else if(st.mv==="follow"){const tx=_mx-ax,ty=_my-ay;const dx=tx-r.ox,dy=ty-r.oy,d=Math.hypot(dx,dy);if(_mx>-1e3&&d>70){const sp=Math.min(260,d*1.6);r.ox+=dx/d*sp*dt;r.oy+=dy/d*sp*dt;r.dir=dx>0?1:-1;moving=true}r.ox=lim(r.ox,minX,maxX);r.oy=lim(r.oy,minY,maxY);bounce=moving?-Math.abs(Math.sin(r.t*11))*6:0}
+    else if(st.mv==="shy"){const cx=ax+r.ox,cy=ay+r.oy;const dx=cx-_mx,dy=cy-_my,d=Math.hypot(dx,dy);if(d<150&&d>0){r.ox+=dx/d*280*dt;r.oy+=dy/d*280*dt;r.dir=dx>0?1:-1;moving=true}else{const d0=Math.hypot(r.ox,r.oy);if(d0>2){r.ox-=r.ox/d0*45*dt;r.oy-=r.oy/d0*45*dt;r.dir=r.ox>0?-1:1;moving=true}}r.ox=lim(r.ox,minX,maxX);r.oy=lim(r.oy,minY,maxY);bounce=moving?-Math.abs(Math.sin(r.t*12))*5:0}
+    if(r.jump>0){r.jump-=dt;bounce-=Math.sin((1-r.jump/.5)*Math.PI)*28}
+    el.style.translate=`${r.ox.toFixed(1)}px ${(r.oy+bounce).toFixed(1)}px`;const im=el.firstChild;if(im)im.style.scale=((r.dir<0)!==!!st.f)?"-1 1":"";el.classList.toggle("walking",moving)});
+  /* hai bạn gặp nhau → cùng nhảy, thả tim */
+  if(any){const mov=D.stickers.filter(s=>MV_MOVE.has(s.mv)&&_rt.get(s.id));for(let i=0;i<mov.length;i++)for(let j=i+1;j<mov.length;j++){const a=mov[i],b=mov[j],ra=_rt.get(a.id),rb=_rt.get(b.id);if(now<(ra.cool||0)||now<(rb.cool||0))continue;
+      const pa=[a.x/100*W+ra.ox,a.y/100*H+ra.oy],pb=[b.x/100*W+rb.ox,b.y/100*H+rb.oy];if(Math.hypot(pa[0]-pb[0],pa[1]-pb[1])<70){ra.cool=rb.cool=now+6000;ra.jump=rb.jump=.5;ra.dir=pb[0]>pa[0]?1:-1;rb.dir=-ra.dir;ra.pause=rb.pause=1.2;hearts((pa[0]+pb[0])/2,Math.min(pa[1],pb[1])-30,5)}}}
+  if(any||D.stickers.some(s=>MV_MOVE.has(s.mv)))_mvRaf=requestAnimationFrame(mvLoop)}
+function hearts(x,y,n=6){for(let i=0;i<n;i++){const h=document.createElement("img");h.className="stk-heart";h.src=stkURL(i%2?"heart-p":"heart-l",3).url;h.style.left=x+"px";h.style.top=y+"px";h.style.setProperty("--dx",((Math.random()*2-1)*50).toFixed(0)+"px");h.style.animationDelay=(i*.06)+"s";document.body.appendChild(h);setTimeout(()=>h.remove(),1500)}}
+function stkSay(el,st){const t=(st.say&&st.say.length?st.say:MV_SAY)[Math.floor(Math.random()*((st.say&&st.say.length)||MV_SAY.length))];$$(".stk-say",el).forEach(x=>x.remove());const b=document.createElement("span");b.className="stk-say";b.textContent=t;el.appendChild(b);setTimeout(()=>b.remove(),2200)}
+/* bấm vào sticker (khi không trang trí) → nhảy lên, thả tim, nói một câu */
+document.addEventListener("pointerdown",e=>{if(UI.decorating)return;const el=e.target.closest&&e.target.closest("#decor .stk.mv-i");if(!el)return;const st=D.stickers.find(s=>s.id===el.dataset.id);if(!st)return;e.preventDefault();
+  const r=_rt.get(st.id);if(r){r.jump=.5;r.pause=.6}else{el.classList.remove("poke");void el.offsetWidth;el.classList.add("poke");setTimeout(()=>el.classList.remove("poke"),650)}
+  const b=el.getBoundingClientRect();hearts(b.left+b.width/2,b.top,4);stkSay(el,st);try{const a=actx();if(a){const o=a.createOscillator(),g=a.createGain();o.type="square";o.frequency.setValueAtTime(660,a.currentTime);o.frequency.exponentialRampToValueAtTime(1320,a.currentTime+.12);g.gain.setValueAtTime(.04*(UI.mute?0:1),a.currentTime);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.18);o.connect(g).connect(a.destination);o.start();o.stop(a.currentTime+.2)}}catch(_){}},true);
+/* AI xem ảnh: con vật / người → tự cho chuyển động phù hợp */
+async function stkAIMotion(st,quiet){const c=D.custom.find(z=>"c:"+z.id===st.k);if(!c||!P.sample)return false;
+  try{const blob=await (await fetch(c.url)).blob();const r=await P.sample.json(`Ảnh này là một sticker trang trí trang học tập. Cho biết trong ảnh là gì và chọn kiểu chuyển động hợp lý.\nTrả về CHỈ JSON: {"kind":"animal|person|character|vehicle|object","what":"tên ngắn tiếng Việt","motion":"walk|run|roam|hop|dance|float|wiggle|follow|shy|bob|none","say":["2–4 câu rất ngắn (≤ 4 từ) mà sticker có thể nói khi được bấm, dễ thương, tiếng Việt"]}\nGợi ý: con vật bốn chân → walk/run/roam; chim, bướm, cá → float; người → dance/hop/walk; xe → run; đồ vật → bob/none.`,{images:[blob],modelTier:"quick"});
+    const mv=STK_MV[r&&r.motion]?r.motion:null;if(!mv)return false;if(quiet&&(r.kind==="object"||mv==="none"||mv==="bob"))return false;
+    st.mv=mv;if(Array.isArray(r.say))st.say=r.say.slice(0,4).map(x=>String(x).slice(0,24));renderStickers();saveDecor();toast(`AI: ${r.what||"sticker"} — cho ${STK_MV[mv].toLowerCase()}. Đổi ở nút 🏃 khi trang trí.`,4200);return true}
+  catch(e){if(!quiet)toast(aiErr(e),4000);return false}}
+/* nút chọn chuyển động trong khung chỉnh sticker */
+const _placeCtl19=placeStkCtl;placeStkCtl=function(){_placeCtl19();const b=$(".stk-box");if(!b||!UI.selStk)return;const st=D.stickers.find(s=>s.id===UI.selStk);if(!st)return;
+  const bt=document.createElement("button");bt.className="h-mv";bt.title="Chuyển động";bt.setAttribute("aria-label","Chọn chuyển động");bt.textContent="🏃";b.appendChild(bt);
+  bt.onclick=e=>{e.stopPropagation();mvMenu(bt,st)}};
+function mvMenu(anchor,st){const isC=String(st.k).startsWith("c:");const m=popMenu(anchor,`<div class="who">Chuyển động của sticker</div><div class="mv-grid">${Object.entries(STK_MV).map(([k,l])=>`<button data-mvk="${k}" aria-pressed="${(st.mv||"bob")===k}">${l}</button>`).join("")}</div>${isC&&P.sample?`<div class="sep"></div><button data-mvai>${ic("spark")} AI xem ảnh và chọn giúp</button>`:""}<div class="who" style="font-size:12px">Bấm vào sticker (khi không trang trí) để nó nhảy lên và nói chuyện. Hai sticker đang chạy gặp nhau sẽ cùng chơi.</div>`);
+  m.addEventListener("click",e=>e.stopPropagation());
+  $$("[data-mvk]",m).forEach(x=>x.onclick=()=>{st.mv=x.dataset.mvk;_rt.delete(st.id);saveDecor();renderStickers();$$("[data-mvk]",m).forEach(y=>y.setAttribute("aria-pressed",y===x));toast("Chuyển động: "+STK_MV[st.mv]+(MV_MOVE.has(st.mv)?" — bấm Xong để xem":""),2200)});
+  const ai=$("[data-mvai]",m);if(ai)ai.onclick=async()=>{ai.disabled=true;ai.innerHTML=`<span class="spin"></span> AI đang xem ảnh…`;await stkAIMotion(st,false);closePop()}}
+
+/* ---------- tự rắc sticker pixel theo giao diện quanh các khối ---------- */
+function autoDecorate(){const keys=["star-y","spark-p","star-b","spark-l","heart-p","plus","star-l","spark-b","moon","ring"];const blks=$$(".blk,.dblk,.card,.panel-box").filter(b=>{const r=b.getBoundingClientRect();return r.width>120&&r.height>60&&r.top<innerHeight&&r.bottom>0}).slice(0,8);
+  D.stickers=D.stickers.filter(s=>!s.auto);let i=0;
+  const put=(x,y,s)=>{const st=addSticker(keys[i%keys.length],{x:Math.max(1,Math.min(99,x/innerWidth*100)),y:Math.max(1,Math.min(99,y/innerHeight*100)),s,r:Math.round((Math.random()-.5)*24)});st.auto=true;if(i%3===0)st.mv="float";i++};
+  blks.forEach((b,j)=>{const r=b.getBoundingClientRect();j%2?put(r.right-6,r.top+8,2+Math.random()*1.2):put(r.left+10,r.bottom-6,1.6+Math.random()*1.2)});
+  for(let k=0;k<5;k++)put(innerWidth*(.08+.84*Math.random()),innerHeight*(.08+.84*Math.random()),1.4+Math.random());
+  renderStickers();saveDecor();toast("Đã rắc sticker pixel theo màu giao diện — kéo để đổi chỗ khi trang trí")}
+
+/* ---------- bảng điều khiển trong “Giao diện & màu” ---------- */
+function patPanelHTML(){const p=UI.pat;const st=patStyle();return `<div class="pat-sec"><h4>Họa tiết &amp; sticker pixel</h4>
+  <label class="chk-row"><input type="checkbox" class="chk" data-pt="on" ${p.on?"checked":""}> Họa tiết pixel trên nền (mọi giao diện)</label>
+  <div class="pat-sty">${Object.entries(PAT_STY).map(([k,l])=>`<button type="button" data-ps="${k}" aria-pressed="${p.style===k}" title="${l}">${k==="auto"||k==="none"?"":`<img src="${patTile(k,patCols(),{dens:1.6,size:.5,alpha:1,seed:11})}" alt="">`}<span>${l}</span></button>`).join("")}</div>
+  <div class="pat-row"><label>Mật độ<input type="range" min=".3" max="3" step=".1" data-pr="dens" value="${p.dens}"></label><label>Cỡ<input type="range" min=".6" max="2.5" step=".1" data-pr="size" value="${p.size}"></label><label>Độ đậm<input type="range" min=".15" max="1" step=".05" data-pr="alpha" value="${p.alpha}"></label></div>
+  <label class="chk-row"><input type="checkbox" class="chk" data-pt="tw" ${p.tw?"checked":""}> Lấp lánh (họa tiết nhấp nháy nhẹ)</label>
+  <div class="pat-row"><div class="seg" role="radiogroup" aria-label="Màu họa tiết"><button role="radio" type="button" data-pc="auto" aria-checked="${p.col==="auto"}">Theo màu giao diện</button><button role="radio" type="button" data-pc="own" aria-checked="${p.col!=="auto"}">Tự chọn màu</button></div><span class="pat-cols" ${p.col==="auto"?"hidden":""}>${["c1","c2","c3"].map(k=>`<input type="color" data-pcol="${k}" value="${p[k]}" aria-label="Màu họa tiết">`).join("")}</span></div>
+  <label class="chk-row"><input type="checkbox" class="chk" data-pt="stk" ${p.stk?"checked":""}> Sticker pixel đổi màu theo giao diện</label>
+  <label class="chk-row"><input type="checkbox" class="chk" data-pt="ai" ${p.ai?"checked":""} ${P.sample?"":"disabled"}> AI nhận ra ảnh con vật / người để cho sticker chuyển động</label>
+  <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="pill-btn" type="button" id="patDeco">${ic("star")} Rắc sticker theo giao diện</button><button class="pill-btn" type="button" id="patStk">${ic("plus")} Thêm ảnh / GIF động</button></div>
+  <p class="muted" style="font-size:12px;margin:0">Kiểu hiện tại: <b data-pcur>${PAT_STY[st]}</b>. Sticker GIF giữ nguyên chuyển động; khi trang trí, chọn sticker rồi bấm 🏃 để cho nó đi, chạy, nhảy, theo chuột…</p></div>`}
+function bindPat(root){const re=()=>{applyPat();if(UI.pat.stk!==undefined)renderStickers();const c=$("[data-pcur]",root);if(c)c.textContent=PAT_STY[patStyle()]};
+  $$("[data-pt]",root).forEach(x=>x.onchange=()=>{UI.pat[x.dataset.pt]=x.checked;savePat();re();if(x.dataset.pt==="stk"&&UI.fly==="stk")renderFly()});
+  $$("[data-ps]",root).forEach(b=>b.onclick=()=>{UI.pat.style=b.dataset.ps;if(b.dataset.ps!=="none")UI.pat.on=true;const on=$("[data-pt=on]",root);if(on)on.checked=UI.pat.on;$$("[data-ps]",root).forEach(y=>y.setAttribute("aria-pressed",y===b));savePat();re()});
+  $$("[data-pr]",root).forEach(x=>{x.oninput=()=>{UI.pat[x.dataset.pr]=+x.value;clearTimeout(x._t);x._t=setTimeout(()=>{applyPat()},60)};x.onchange=savePat});
+  $$("[data-pc]",root).forEach(b=>b.onclick=()=>{UI.pat.col=b.dataset.pc;$$("[data-pc]",root).forEach(y=>y.setAttribute("aria-checked",y===b));const pc=$(".pat-cols",root);if(pc)pc.hidden=UI.pat.col==="auto";savePat();re()});
+  $$("[data-pcol]",root).forEach(x=>x.oninput=()=>{UI.pat[x.dataset.pcol]=x.value;UI.pat.col="own";clearTimeout(x._t);x._t=setTimeout(()=>{applyPat();savePat()},80)});
+  $("#patDeco",root).onclick=()=>{autoDecorate()};
+  $("#patStk",root).onclick=()=>{const i=document.createElement("input");i.type="file";i.accept="image/*,.gif";i.multiple=true;i.onchange=()=>importStickerFiles([...i.files]);i.click()}}
+const _renderFly19=renderFly;renderFly=function(...a){const r=_renderFly19.apply(this,a);const f=$(".flyout");if(!f)return r;
+  if(UI.fly==="skin"&&!$(".pat-sec",f)){const sec=document.createElement("div");sec.innerHTML=patPanelHTML();const box=sec.firstElementChild;const after=$(".skins",f);if(after)after.after(box);else f.appendChild(box);bindPat(box)}
+  if(UI.fly==="stk"){const inp=$("#stkFile",f);if(inp)inp.accept="image/*,.gif";const sel=UI.selStk&&D.stickers.find(s=>s.id===UI.selStk);
+    if(!$(".stk-mvsec",f)){const d=document.createElement("div");d.className="stk-mvsec";d.innerHTML=`<p class="muted" style="font-size:12px;margin:0">Ảnh <b>GIF</b> giữ nguyên chuyển động. Chọn một sticker đã dán rồi bấm <b>🏃</b> để cho nó đi, chạy, nhảy, theo chuột; bấm vào sticker để nó tương tác.</p><button class="pill-btn" id="stkDeco">${ic("star")} Rắc sticker theo giao diện</button>`;const tr=$("#myTray",f);(tr?tr.nextElementSibling||tr:f.lastElementChild).after(d);$("#stkDeco",d).onclick=autoDecorate}}
+  return r};
+{const _as19=applySkin;applySkin=function(k,quiet){const r=_as19.apply(this,arguments);try{if(document.body){applyPat();if(UI.pat.stk&&D&&D.stickers&&D.stickers.length)renderStickers()}}catch(e){}return r}}
+/* đồng bộ màu cảnh nền (syncTheme) cũng đổi màu họa tiết */
+if(typeof syncTheme==="function"){const _st19=syncTheme;syncTheme=async function(...a){const r=await _st19.apply(this,a);try{applyPat();if(UI.pat.stk)renderStickers()}catch(e){}return r}}
+setTimeout(()=>{try{applyPat();renderStickers()}catch(e){}},300);
+
+/* =====================================================================
+   v19 — STICKER ĐỘNG TRONG XƯỞNG CẮT GHÉP · GỘP CẮT GHÉP VÀO MỤC STICKER ·
+   BẤM RA NGOÀI ĐỂ ĐÓNG BẢNG · BIỂU TƯỢNG Ô VUÔNG MỞ BẢNG TỔNG QUAN ·
+   BỎ MỤC "BỐ CỤC & TOÀN MÀN HÌNH"
+   ===================================================================== */
+/* ---------- GIF: tách khung (ImageDecoder) và mã hóa lại (gifenc) ---------- */
+async function gifFrames(blob){if(!("ImageDecoder" in window)||!blob)return null;
+  try{const type=blob.type||"image/gif";if(ImageDecoder.isTypeSupported&&!(await ImageDecoder.isTypeSupported(type)))return null;const dec=new ImageDecoder({data:await blob.arrayBuffer(),type});await dec.tracks.ready;const tr=dec.tracks.selectedTrack;const n=tr?tr.frameCount:1;if(!tr||n<2){dec.close();return null}
+    const out=[];for(let i=0;i<Math.min(n,150);i++){const {image}=await dec.decode({frameIndex:i});const c=document.createElement("canvas");c.width=image.displayWidth;c.height=image.displayHeight;c.getContext("2d").drawImage(image,0,0);out.push({c,d:Math.max(20,Math.round((image.duration||100000)/1000))});image.close()}
+    dec.close();return out}catch(e){console.warn("gifFrames",e);return null}}
+function encodeGif(frames){const {GIFEncoder,quantize,applyPalette}=window.GIFENC;const enc=GIFEncoder();
+  frames.forEach(({c,d})=>{const {data,width,height}=c.getContext("2d").getImageData(0,0,c.width,c.height);for(let i=3;i<data.length;i+=4)data[i]=data[i]>100?255:0;
+    const pal=quantize(data,256,{format:"rgba4444",oneBitAlpha:true});const idx=applyPalette(data,pal,"rgba4444");const ti=pal.findIndex(p=>p[3]===0);
+    enc.writeFrame(idx,width,height,{palette:pal,delay:d,transparent:ti>=0,transparentIndex:ti>=0?ti:0,dispose:2})});
+  enc.finish();return new Blob([enc.bytes()],{type:"image/gif"})}
+async function saveGifSticker(blob,name,at,mv){if(blob.size>15e6){toast("GIF quá lớn (tối đa 15 MB)");return null}
+  const src=await fileToURL(blob);const im=await loadImg(src);const W=im.naturalWidth||120,H=im.naturalHeight||120;let url=null,asset=null;
+  if(P.assets&&!P.local){try{const up=await P.assets.upload(blob);url=up.url;asset=up.id}catch(e){}}
+  if(!url){if(!P.local&&src.length>160000){toast("GIF hơi lớn để lưu ở đây — thử bớt khung hoặc thu nhỏ",4500);return null}url=src}
+  const k=Math.min(1,180/Math.max(W,H));const item={id:mkid("cs"),url,asset,w:Math.max(8,Math.round(W/3*k)),h:Math.max(8,Math.round(H/3*k)),name:name||"GIF",anim:true,mv:mv&&mv!=="bob"?mv:undefined};
+  D.custom.push(item);saveDecor();const st=addSticker("c:"+item.id,at||{});if(item.mv){st.mv=item.mv;renderStickers();saveDecor()}return item}
+/* sticker riêng có sẵn kiểu chuyển động → khi dán ra cũng chuyển động như vậy */
+{const _add20=addSticker;addSticker=function(k,o={}){const st=_add20(k,o);if(String(k).startsWith("c:")&&!st.mv){const c=D.custom.find(z=>"c:"+z.id===k);if(c&&c.mv){st.mv=c.mv;renderStickers();saveDecor()}}return st}}
+
+/* ---------- thanh tiện ích: bỏ "Cắt ghép" (đã gộp vào Sticker) và "Bố cục & toàn màn hình" ---------- */
+delete RAIL_ALL.cut;delete RAIL_ALL.lay;
+{const d=UI.dash;if(d&&d.rail){d.rail.order=d.rail.order.filter(k=>RAIL_ALL[k]);d.rail.hidden=(d.rail.hidden||[]).filter(k=>RAIL_ALL[k])}}
+RAIL_ALL.stk=["Sticker · cắt ghép · GIF động","star"];
+
+/* ---------- mục Sticker có hai thẻ: Dán sticker | Cắt ghép & GIF ---------- */
+UI.stkTab=local.get("stkTab","paste");
+const _renderFly20=renderFly;renderFly=function(...a){const r=_renderFly20.apply(this,a);const f=$(".flyout");if(!f||UI.fly!=="stk"||$(".stk-tabs",f))return r;
+  const h3=$("h3",f);const kids=[...f.children].filter(x=>x!==h3);const p1=document.createElement("div");p1.className="stk-pane";kids.forEach(k=>p1.appendChild(k));
+  const p2=document.createElement("div");p2.className="stk-pane";
+  p2.innerHTML=`<label class="cut-drop" id="cutDrop">${ic("cut")}<b>Thả ảnh hoặc GIF vào đây</b><span>hoặc bấm để chọn — mở xưởng cắt ghép: xóa nền, cắt theo hình, viền, pixel hóa, ghép nhiều lớp</span><input type="file" accept="image/*,.gif" multiple hidden id="cutFile"></label>
+    <button class="pill-btn primary" id="cutOpen">${ic("cut")} Mở xưởng cắt ghép</button>
+    <p class="muted" style="font-size:12px;margin:0">GIF vẫn chuyển động sau khi xóa nền, cắt, thêm viền. Có thể chọn kiểu chuyển động (đi, chạy, nhảy…) trước khi dán.</p>
+    ${D.custom.length?`<h4 style="margin:4px 0 0;font-size:14px">Sửa lại sticker của bạn</h4><div class="stk-tray">${D.custom.map(c=>`<button data-cedit="${esc(c.id)}" class="custom" title="Mở trong xưởng cắt ghép"><img src="${esc(c.url)}" alt="" style="image-rendering:auto">${c.anim?`<i class="gif-tag">GIF</i>`:""}</button>`).join("")}</div>`:""}`;
+  const tabs=document.createElement("div");tabs.className="rtab stk-tabs";tabs.setAttribute("role","tablist");tabs.innerHTML=`<button role="tab" data-stab="paste">${ic("star")} Dán sticker</button><button role="tab" data-stab="cut">${ic("cut")} Cắt ghép &amp; GIF</button>`;
+  f.append(tabs,p1,p2);
+  const show=t=>{UI.stkTab=t;local.set("stkTab",t);$$("[data-stab]",tabs).forEach(b=>b.setAttribute("aria-selected",b.dataset.stab===t));p1.hidden=t!=="paste";p2.hidden=t!=="cut"};show(UI.stkTab);
+  $$("[data-stab]",tabs).forEach(b=>b.onclick=()=>show(b.dataset.stab));
+  const go=async files=>{closeFly();openStickerStudio();await new Promise(r=>setTimeout(r,60));if(files&&files.length&&UI.studioAdd)UI.studioAdd(files)};
+  $("#cutOpen",p2).onclick=()=>go(null);$("#cutFile",p2).onchange=e=>go([...e.target.files]);
+  const dz=$("#cutDrop",p2);dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("over")});dz.addEventListener("dragleave",()=>dz.classList.remove("over"));dz.addEventListener("drop",e=>{e.preventDefault();e.stopPropagation();dz.classList.remove("over");go([...e.dataTransfer.files])});
+  $$("[data-cedit]",p2).forEach(b=>b.onclick=async()=>{const c=D.custom.find(z=>z.id===b.dataset.cedit);if(!c)return;try{const bl=await (await fetch(c.url)).blob();go([new File([bl],(c.name||"sticker")+(c.anim?".gif":".png"),{type:bl.type||(c.anim?"image/gif":"image/png")})])}catch(e){toast("Không mở được sticker này")}});
+  return r};
+
+/* ---------- bấm ra ngoài → tự đóng bảng của thanh tiện ích / thanh công cụ ---------- */
+document.addEventListener("pointerdown",e=>{if(!UI.fly)return;const t=e.target;if(!t.closest)return;
+  if(t.closest(".flyout,#rail,.rail,.popmenu,#modal,#dlg,.stk-box,.decor-bar,.drag-ghost,.toast,.tip,.mobtabs"))return;
+  if(UI.decorating&&(t.closest("#decor .stk")||UI.selStk))return;/* đang trang trí: lần bấm đầu chỉ bỏ chọn sticker */
+  closeFly()},true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&UI.fly&&!/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||"")&&$("#modal").hidden!==false&&($("#dlg")||{}).hidden!==false)closeFly()});
+
+/* ---------- biểu tượng ô vuông → bảng TỔNG QUAN (lịch học, việc cần làm, môn học…) ---------- */
+{const _railAct20=railAct;railAct=function(k,btn){if(k==="home"&&btn&&btn.classList&&btn.classList.contains("brand")){hideTip();if(UI.fly==="ov")return closeFly();UI.fly="ov";renderRail();renderFly();return}return _railAct20(k,btn)}}
+{const _rr20=renderRail;renderRail=function(...a){const r=_rr20.apply(this,a);const b=$("#rail .brand");if(b){b.title="Tổng quan: lịch học, việc cần làm, môn học (chuột phải: đổi biểu tượng)";b.setAttribute("aria-label","Mở bảng tổng quan");b.setAttribute("aria-pressed",UI.fly==="ov")}return r}}
+UI.ovDays=local.get("ovDays",7);
+function ovHTML(){const now=new Date();const today=ymd(now);const rs=new Date(now);rs.setHours(0,0,0,0);const re=addD(rs,UI.ovDays);
+  let evs=[];try{evs=calEvents(rs,re)}catch(e){}
+  const byDay=new Map();for(let i=0;i<UI.ovDays;i++)byDay.set(ymd(addD(rs,i)),[]);evs.forEach(e=>{const k=ymd(e.st);if(byDay.has(k))byDay.get(k).push(e)});
+  const tasks=UI.tasks.filter(t=>t.status!=="done").sort((a,b)=>(a.due||"9999")<(b.due||"9999")?-1:1);
+  const late=tasks.filter(t=>t.due&&t.due<today),soon=tasks.filter(t=>t.due&&t.due>=today&&t.due<=ymd(addD(rs,7))),later=tasks.filter(t=>!t.due||t.due>ymd(addD(rs,7)));
+  const done=UI.tasks.filter(t=>t.status==="done").length,tot=UI.tasks.length;
+  const tm=d=>d.toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"});
+  const trow=t=>{const s=subjOf(t.subj);const lt=t.due&&t.due<today;return `<label class="ov-task ${lt?"late":""}"><input type="checkbox" class="chk" data-ovt="${esc(t.id)}"><span class="nm">${esc(t.title)}</span>${s?`<i class="tag" style="background:${s.color}">${esc(s.code||s.title)}</i>`:""}<small>${t.due?(lt?"quá hạn · ":"")+new Date(t.due+"T00:00:00").toLocaleDateString("vi-VN",{weekday:"short",day:"numeric",month:"numeric"}):"chưa đặt hạn"}</small></label>`};
+  const subs=[...UI.subjs].sort((a,b)=>(a.order||0)-(b.order||0));
+  const nbs=[...UI.nbs].sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,6);
+  return `<h3>${ic("home")} Tổng quan<span class="muted ov-date">${now.toLocaleDateString("vi-VN",{weekday:"long",day:"numeric",month:"long"})}</span><button class="ghost ic x" data-fx aria-label="Đóng">${ic("close")}</button></h3>
+  <div class="ov-stats"><div><b>${tasks.length}</b><span>việc cần làm</span></div><div class="${late.length?"bad":""}"><b>${late.length}</b><span>quá hạn</span></div><div><b>${evs.filter(e=>ymd(e.st)===today).length}</b><span>lịch hôm nay</span></div><div><b>${subs.length}</b><span>môn học</span></div><div><b>${tot?Math.round(done/tot*100):0}%</b><span>đã hoàn thành</span></div></div>
+  <div class="ov-grid">
+   <section class="ov-col ov-cal"><div class="ov-h"><b>${ic("cal")} Lịch học</b><div class="seg" role="radiogroup" aria-label="Số ngày">${[[3,"3 ngày"],[7,"Tuần"],[14,"2 tuần"]].map(([n,l])=>`<button role="radio" data-ovd="${n}" aria-checked="${UI.ovDays===n}">${l}</button>`).join("")}</div></div>
+    <div class="ov-days">${[...byDay.entries()].map(([d,L])=>{const dd=new Date(d+"T00:00:00");return `<div class="ov-day ${d===today?"today":""}"><div class="dh"><b>${d===today?"Hôm nay":dd.toLocaleDateString("vi-VN",{weekday:"long"})}</b><small>${dd.toLocaleDateString("vi-VN",{day:"numeric",month:"numeric"})}</small></div>${L.length?L.map(e=>`<button class="ov-ev" data-ovk="${e.k}" ${e.nb?`data-ovnb="${esc(e.nb)}"`:""} ${e.link?`data-ovl="${esc(e.link)}"`:""} style="--c:${e.c}"><i></i><span class="t">${e.all?"Cả ngày":tm(e.st)}</span><span class="nm">${esc(e.t)}</span>${e.cal?`<small>${esc(e.cal)}</small>`:""}</button>`).join(""):`<span class="muted ov-none">Trống</span>`}</div>`}).join("")}</div>
+    <div class="ov-acts"><button class="btn" data-ova="cal">${ic("cal")} Mở lịch đầy đủ</button><button class="btn" data-ova="ev">${ic("plus")} Thêm sự kiện</button></div></section>
+   <section class="ov-col"><div class="ov-h"><b>${ic("check")} Việc cần làm</b><button class="btn" data-ova="task">${ic("plus")} Thêm</button></div>
+    ${late.length?`<div class="ov-grp bad">Quá hạn</div>${late.map(trow).join("")}`:""}${soon.length?`<div class="ov-grp">7 ngày tới</div>${soon.map(trow).join("")}`:""}${later.length?`<div class="ov-grp">Sau đó / chưa có hạn</div>${later.slice(0,12).map(trow).join("")}`:""}${tasks.length?"":`<div class="ov-empty">Không còn việc nào ♡</div>`}</section>
+   <section class="ov-col"><div class="ov-h"><b>${ic("book")} Môn học</b><button class="btn" data-ova="subj">${ic("plus")} Môn mới</button></div>
+    ${subs.length?subs.map(s=>{const T=UI.tasks.filter(t=>t.subj===s.id),dn=T.filter(t=>t.status==="done").length,n=nbsOf(s.id).length;const pc=T.length?Math.round(dn/T.length*100):0;return `<button class="ov-subj" data-ovs="${esc(s.id)}" style="--c:${s.color}"><i class="dot"></i><span class="nm"><b>${esc(s.title)}</b><small>${n} bài học · ${T.length-dn} việc còn lại</small></span><span class="pc"><i style="width:${pc}%"></i></span><small class="pcn">${pc}%</small></button>`}).join(""):`<div class="ov-empty">Chưa có môn học.</div>`}
+    ${nbs.length?`<div class="ov-grp">Bài học gần đây</div>${nbs.map(n=>`<button class="ov-nb" data-ovn="${esc(n.id)}">${ic("file")}<span class="nm">${esc(n.title)}</span><small>${n.srcCount||0} nguồn</small></button>`).join("")}`:""}
+    <div class="ov-mail" id="ovMail"></div></section>
+  </div>`}
+async function ovMail(f){const box=$("#ovMail",f);if(!box||typeof gmStatus!=="function")return;const st=await gmStatus();if(st!=="ok"){box.innerHTML="";return}
+  try{const r=await gmCall("search_threads",{query:"is:unread in:inbox",pageSize:4});const th=(r.threads||[]).map(t=>{const ms=(t.messages||[]).map(gmNorm);const l=ms[ms.length-1]||{};return {id:t.id,s:(ms[0]||l).subject||"(Không tiêu đề)",f:gmName(l.from)}});if(!$("#ovMail"))return;
+    box.innerHTML=`<div class="ov-grp">${ic("mail")} Gmail chưa đọc</div>${th.length?th.map(t=>`<button class="ov-nb" data-ovm="${esc(t.id)}">${ic("mail")}<span class="nm">${esc(t.s)}</span><small>${esc(t.f)}</small></button>`).join(""):`<span class="muted" style="font-size:12.5px">Không có thư mới.</span>`}`;
+    $$("[data-ovm]",box).forEach(b=>b.onclick=()=>{closeFly();openMailHub(b.dataset.ovm)})}catch(e){box.innerHTML=""}}
+function bindOv(f){
+  $("[data-fx]",f).onclick=closeFly;
+  $$("[data-ovd]",f).forEach(b=>b.onclick=()=>{UI.ovDays=+b.dataset.ovd;local.set("ovDays",UI.ovDays);renderFly()});
+  $$("[data-ovt]",f).forEach(x=>x.onchange=()=>{Store.patch(x.dataset.ovt,{status:x.checked?"done":"todo"});const row=x.closest(".ov-task");if(row)row.classList.add("gone");toast("Đã đánh dấu xong ✓",1600)});
+  $$("[data-ovs]",f).forEach(b=>b.onclick=()=>{closeFly();openSubject(b.dataset.ovs)});
+  $$("[data-ovn]",f).forEach(b=>b.onclick=()=>{closeFly();openNotebook(b.dataset.ovn)});
+  $$(".ov-ev",f).forEach(b=>b.onclick=()=>{if(b.dataset.ovl){window.open(b.dataset.ovl,"_blank","noopener");return}if(b.dataset.ovnb){closeFly();openNotebook(b.dataset.ovnb);return}closeFly();goCal()});
+  const act={cal:()=>{closeFly();goCal()},ev:()=>{closeFly();eventDialog({date:ymd(new Date()),start:"19:00"})},task:()=>{closeFly();taskDialog()},subj:()=>{closeFly();subjectDialog()}};
+  $$("[data-ova]",f).forEach(b=>b.onclick=()=>act[b.dataset.ova]&&act[b.dataset.ova]());
+  ovMail(f)}
+{const _rf20b=renderFly;renderFly=function(...a){const old=$(".flyout.ov-fly");const top=old?old.scrollTop:0;const r=_rf20b.apply(this,a);if(UI.fly!=="ov")return r;let f=$(".flyout");if(!f){f=document.createElement("div");f.className="flyout";document.body.appendChild(f)}f.classList.add("ov-fly");f.dataset.k="ov";f.innerHTML=ovHTML();bindOv(f);if(old){f.classList.add("noanim");f.scrollTop=top}return r}}
+/* dữ liệu đổi (đánh dấu việc xong, thêm lịch…) → bảng tổng quan cập nhật, giữ vị trí cuộn */
+setInterval(()=>{if(UI.fly!=="ov")return;const f=$(".flyout.ov-fly");if(!f||f.matches(":hover"))return;const k=JSON.stringify([UI.tasks.map(t=>t.id+t.status+t.due),UI.subjs.length,UI.nbs.length]);if(f._k&&f._k!==k)renderFly();f._k=k},2500);
+setTimeout(()=>{try{renderRail()}catch(e){}},90);
 
 /* =====================================================================
    BẢN WEB ĐỘC LẬP — cài đặt AI, đăng nhập Google, sao lưu dữ liệu
